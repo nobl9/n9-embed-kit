@@ -42,6 +42,19 @@ const n9AuthConfig = {
 const targetOrigin = 'https://app.nobl9.com';
 ```
 
+### iFrame soruces
+Set the iframe sources to point to your Nobl9 reports or dashboards.
+- `wait=true` query parameter is required to force N9 app to wait for tokens via postMessage before rendering (see Token Message Protocol Specification below).
+- `embedMode=minimal` query parameter is optional to hide the Nobl9 header and sidebar in the embedded view.
+```javascript
+const iframeConfig = {
+    'panel-1': 'https://example.com/reports/details/report-1?embedMode=minimal&wait=true',
+    'panel-2': 'https://example.com/reports/details/report-2?embedMode=minimal&wait=true',
+    // 'panel-3': null,
+    // 'panel-4': null,
+};
+```
+
 ## Two Authentication Methods
 The JavaScript (`n9-iframe-auth.js`) supports two acquisition modes controlled by `iframeAuthMode`:
 
@@ -60,6 +73,106 @@ The JavaScript (`n9-iframe-auth.js`) supports two acquisition modes controlled b
 ### Choosing a Mode
 Set `const iframeAuthMode = 'redirect'` (default) or `'popup'` inside `n9-iframe-auth.js`.
 Use redirect when you want maximal reliability and simplicity; use popup when uninterrupted SPA flow is preferred and you can guarantee popups are allowed.
+
+## Token Message Protocol Specification
+
+### Overview
+The parent page and embedded iframes communicate using the `window.postMessage()` API. All messages must be sent to the correct `targetOrigin` for security. The embedded iframe **MUST** implement this protocol to receive authentication tokens.
+
+---
+
+### 1. IFRAME_READY (Iframe → Parent)
+**Sent by:** N9 iframe
+**When:** After iframe loads and is ready to receive tokens
+
+**Message Structure:**
+```javascript
+{
+  type: "IFRAME_READY"
+}
+```
+
+---
+
+### 2. INJECT_TOKENS (Parent → Iframe)
+**Sent by:** Parent page (n9-iframe-auth.js)
+**When:** After receiving IFRAME_READY signal
+**What:** Sends OAuth tokens to iframe for authentication (tokens obtained via redirect or popup oauth flow)
+
+**Message Structure:**
+```javascript
+{
+  type: "INJECT_TOKENS",
+  payload: {
+    version: "2",                    // Protocol version
+    accessToken: "eyJhbGc...",       // OAuth access token (JWT)
+    idToken: "eyJhbGc...",           // OAuth ID token (JWT)
+    scopes: ["openid", "profile", "email"],  // Granted scopes array
+    source: "dashboard-sample"        // Source identifier
+  }
+}
+```
+
+**Field Descriptions:**
+Tokens obtained via redirect or popup oauth flow
+- `version`: Protocol version string (currently "2")
+- `accessToken`: JWT access token for API authentication
+- `idToken`: JWT ID token containing user claims
+- `scopes`: Array of OAuth scopes granted during authentication
+- `source`: Identifier of the embedding application
+
+---
+
+### 3. INJECT_TOKENS_ACK (Iframe → Parent)
+**Sent by:** N9 iframe
+**When:** After processing INJECT_TOKENS message
+
+**Success Response:**
+```javascript
+{
+  type: "INJECT_TOKENS_ACK",
+  payload: {
+    success: true
+  }
+}
+```
+
+**Error Response:**
+```javascript
+{
+  type: "INJECT_TOKENS_ACK",
+  payload: {
+    success: false,
+    error: "Description of what went wrong"
+  }
+}
+```
+---
+
+### Complete Message Flow
+
+```
+Parent Page                       N9 Embedded Iframe
+     |                                   |
+     |-- Creates iframe with src ------->|
+     |                                   |
+     |                                   |-- Loads & initializes
+     |                                   |
+     |<------- IFRAME_READY -------------|
+     |                                   |
+     |                                   |
+     |------- INJECT_TOKENS ------------>|
+     |                                   |
+     |                                   |-- Stores tokens
+     |                                   |-- Initializes app
+     |                                   |
+     |<----- INJECT_TOKENS_ACK ----------|
+     |       (success: true)             |
+     |                                   |
+     |                                   |-- Fully authenticated
+```
+
+---
 
 ## Running a Local Static Server on Port 8080
 Port `8080` has been configured as an allowed authentication issuer / redirect origin in this example setup. To serve these files locally:

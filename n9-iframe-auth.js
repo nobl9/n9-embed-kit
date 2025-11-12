@@ -25,8 +25,8 @@ const n9AuthConfig = {
  * @type {Object.<string, string>}
  */
 const iframeConfig = {
-  'panel-1': 'https://example.com/reports/details/report-1',
-  'panel-2': 'https://example.com/reports/details/report-2',
+  'panel-1': 'https://example.com/reports/details/report-1?embedMode=minimal&wait=true',
+  'panel-2': 'https://example.com/reports/details/report-2?embedMode=minimal&wait=true',
   // 'panel-3': null,
   // 'panel-4': null,
 };
@@ -158,7 +158,7 @@ function waitForIframeReady(iframe, targetOrigin, timeoutMs = 5000) {
         return;
       }
 
-      // CRITICAL: Check that the message comes from THIS specific iframe
+      // Check that the message comes from THIS specific iframe
       if (
         event.data?.type === "IFRAME_READY" &&
         event.source === iframe.contentWindow
@@ -214,7 +214,7 @@ function postTokensToIframe(iframe, tokens, targetOrigin) {
         return;
       }
 
-      // CRITICAL: Check that the ACK comes from THIS specific iframe
+      // Check that the ACK comes from THIS specific iframe
       if (
         event.data?.type === "INJECT_TOKENS_ACK" &&
         event.source === iframe.contentWindow
@@ -289,7 +289,8 @@ function showAuthenticatedUI(tokens) {
 window.loadIframes = async function () {
   let tokens = null;
 
-  if (iframeAuthMode === "popup") {
+  // Auth mode: popup or redirect
+  if (iframeAuthMode === "popup") { // Popup mode
     if (!checkPopupAllowed()) {
       console.error("Popups are blocked by the browser");
       alert(
@@ -307,7 +308,7 @@ window.loadIframes = async function () {
       );
       return;
     }
-  } else {
+  } else { // Redirect mode
     tokens = await obtainTokensRedirectMode();
     if (!tokens) {
       // Redirect initiated; page will reload with tokens
@@ -315,7 +316,6 @@ window.loadIframes = async function () {
     }
   }
 
-  // Show authenticated UI & populate user email
   showAuthenticatedUI(tokens);
 
   // Iterate over configured iframes and create them
