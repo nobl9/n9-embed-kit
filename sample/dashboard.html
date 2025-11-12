@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard - Four Panel View</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://global.oktacdn.com/okta-auth-js/7.5.1/okta-auth-js.min.js"></script>
+    <script src="../n9-iframe-auth.js" defer></script>
+  </head>
+  <body class="dashboard">
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <div>Checking authentication...</div>
+    </div>
+
+    <div id="app" style="display: none">
+      <header>
+        <h1>Dashboard</h1>
+        <div class="user-info">
+          <span class="user-email" id="userEmail">Loading...</span>
+        </div>
+      </header>
+
+      <div class="container">
+        <div class="grid-container">
+          <div class="panel">
+            <div class="panel-header">Panel 1</div>
+            <div class="panel-content" id="panel-1">
+              <div class="placeholder">
+                <div class="status-message">Authenticating...</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">Panel 2</div>
+            <div class="panel-content" id="panel-2">
+              <div class="placeholder">
+                <div class="status-message">Authenticating...</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">Panel 3</div>
+            <div class="panel-content" id="panel-3">
+              <div class="placeholder">No content</div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">Panel 4</div>
+            <div class="panel-content" id="panel-4">
+              <div class="placeholder">No content</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
