@@ -73,6 +73,7 @@ async function parseRedirectTokens() {
       await n9Auth.tokenManager.setTokens(tokens);
       const accessToken = tokens.accessToken.accessToken;
       const idToken = tokens.idToken.idToken;
+      const idTokenClaims = tokens.idToken.claims || {};
 
       // Clean URL (remove hash/query containing tokens)
       try {
@@ -81,11 +82,10 @@ async function parseRedirectTokens() {
       } catch (e) {
         console.warn("Failed to clean URL after token parsing:", e);
       }
-
-      return { accessToken, idToken, scopes: n9AuthConfig.scopes };
+      // Return tokens; UI update handled separately by showAuthenticatedUI()
+      return { accessToken, idToken, idTokenClaims, scopes: n9AuthConfig.scopes };
     }
   } catch (e) {
-    // No tokens in URL or parsing failed - this is expected on initial page load
     return null;
   }
   return null;
@@ -128,7 +128,8 @@ async function obtainTokensPopupMode() {
       await n9Auth.tokenManager.setTokens(res.tokens);
       const accessToken = res.tokens.accessToken.accessToken;
       const idToken = res.tokens.idToken.idToken;
-      return { accessToken, idToken, scopes: n9AuthConfig.scopes };
+      const idTokenClaims = res.tokens.idToken.claims || {};
+      return { accessToken, idToken, idTokenClaims, scopes: n9AuthConfig.scopes };
     }
 
     console.warn("Popup token acquisition returned without both tokens");
@@ -251,6 +252,36 @@ function postTokensToIframe(iframe, tokens, targetOrigin) {
 }
 
 /**
+ * Helper: Show authenticated UI and populate user email from idToken claims
+ */
+function showAuthenticatedUI(tokens) {
+  const loadingEl = document.getElementById('loading');
+  const appEl = document.getElementById('app');
+  if (loadingEl) loadingEl.style.display = 'none';
+  if (appEl) appEl.style.display = 'flex';
+  const userEmailEl = document.getElementById('userEmail');
+  if (!userEmailEl) return;
+
+  let claims = tokens?.idTokenClaims;
+  // Fallback: decode idToken locally if claims missing
+  if (!claims && tokens?.idToken) {
+    try {
+      const parts = tokens.idToken.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+        claims = payload;
+      }
+    } catch (e) {
+      console.warn('Unable to decode idToken for claims:', e);
+    }
+  }
+  if (claims) {
+    const email = claims.email || claims.preferred_username || claims.sub || 'Authenticated';
+    userEmailEl.textContent = email;
+  }
+}
+
+/**
  * Load iframes and setup token injection for authenticated iframes
  * This is the main entry point called after dashboard authentication
  * @returns {Promise<void>}
@@ -283,6 +314,9 @@ window.loadIframes = async function () {
       return;
     }
   }
+
+  // Show authenticated UI & populate user email
+  showAuthenticatedUI(tokens);
 
   // Iterate over configured iframes and create them
   Object.entries(iframeConfig).forEach(([panelId, iframeUrl]) => {
