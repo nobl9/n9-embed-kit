@@ -1,4 +1,4 @@
-# Nobl9 Embedded Iframe Authentication Demo
+# Nobl9 Embedded Iframe Authentication
 
 This directory demonstrates how to embed authenticated Nobl9 console content via iframes while acquiring and injecting tokens from the parent page.
 
