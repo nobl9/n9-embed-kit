@@ -22,7 +22,7 @@ The sample assumes you already have an active authenticated session with the Ide
 
 Before using the script, you must configure the following:
 
-- `n9AuthConfig`: Set N9 auth server issuer, clientId, and other authentication parameters.
+- `n9AuthConfig`: Set N9 auth server issuer and clientId.
 - `targetOrigin`: Set this to match the domain of your embedded iframes for secure postMessage communication.
 
 Example:
@@ -42,7 +42,7 @@ const n9AuthConfig = {
 const targetOrigin = 'https://app.nobl9.com';
 ```
 
-### iFrame soruces
+### iFrame sources
 Set the iframe sources to point to your Nobl9 reports or dashboards.
 - `wait=true` query parameter is required to force N9 app to wait for tokens via postMessage before rendering (see Token Message Protocol Specification below).
 - `embedMode=minimal` query parameter is optional to hide the Nobl9 header and sidebar in the embedded view.
