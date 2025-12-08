@@ -44,12 +44,12 @@ const targetOrigin = 'https://app.nobl9.com';
 
 ### iFrame soruces
 Set the iframe sources to point to your Nobl9 reports or dashboards.
-- `wait=true` query parameter is required to force N9 app to wait for tokens via postMessage before rendering (see Token Message Protocol Specification below).
+- `waitExternalAuth=true` query parameter is required to force N9 app to wait for tokens via postMessage before rendering (see Token Message Protocol Specification below). Note: `wait=true` is deprecated.
 - `embedMode=minimal` query parameter is optional to hide the Nobl9 header and sidebar in the embedded view.
 ```javascript
 const iframeConfig = {
-    'panel-1': 'https://example.com/reports/details/report-1?embedMode=minimal&wait=true',
-    'panel-2': 'https://example.com/reports/details/report-2?embedMode=minimal&wait=true',
+    'panel-1': 'https://example.com/reports/details/report-1?embedMode=minimal&waitExternalAuth=true',
+    'panel-2': 'https://example.com/reports/details/report-2?embedMode=minimal&waitExternalAuth=true',
     // 'panel-3': null,
     // 'panel-4': null,
 };
