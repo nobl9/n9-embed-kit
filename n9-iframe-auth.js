@@ -25,8 +25,8 @@ const n9AuthConfig = {
  * @type {Object.<string, string>}
  */
 const iframeConfig = {
-  'panel-1': 'https://example.com/reports/details/report-1?embedMode=minimal&wait=true',
-  'panel-2': 'https://example.com/reports/details/report-2?embedMode=minimal&wait=true',
+  'panel-1': 'https://example.com/reports/details/report-1?embedMode=minimal&waitExternalAuth=true',
+  'panel-2': 'https://example.com/reports/details/report-2?embedMode=minimal&waitExternalAuth=true',
   // 'panel-3': null,
   // 'panel-4': null,
 };
