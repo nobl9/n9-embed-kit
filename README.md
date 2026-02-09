@@ -149,6 +149,33 @@ Tokens obtained via redirect or popup oauth flow
 ```
 ---
 
+### 4. NAVIGATION_CHANGE (Iframe → Parent)
+**Sent by:** N9 iframe
+**When:** User navigates within the iframe (route changes)
+
+**Message Structure:**
+```javascript
+{
+  type: "NAVIGATION_CHANGE",
+  payload: {
+    url: "https://app.nobl9.com/reports/details/123",  // Full URL
+    path: "/reports/details/123",                       // Path without query/hash
+    fullPath: "/reports/details/123?org=demo",          // Path with query/hash
+    routeName: "ReportDetails"                          // Route name
+  }
+}
+```
+
+**Field Descriptions:**
+- `url`: Complete URL of the current iframe location
+- `path`: URL path without query parameters or hash
+- `fullPath`: URL path including query parameters and hash
+- `routeName`: Internal route name from the iframe's router
+
+**Usage:** Parent page can track navigation history and implement back/forward functionality for each iframe.
+
+---
+
 ### Complete Message Flow
 
 ```
@@ -170,6 +197,12 @@ Parent Page                       N9 Embedded Iframe
      |       (success: true)             |
      |                                   |
      |                                   |-- Fully authenticated
+     |                                   |
+     |                                   |-- User navigates
+     |                                   |
+     |<--- NAVIGATION_CHANGE ------------|
+     |                                   |
+     |-- Tracks navigation history       |
 ```
 
 ---

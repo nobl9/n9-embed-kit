@@ -43,6 +43,105 @@ const targetOrigin = 'https://n9-domain';
  */
 const iframeAuthMode = "redirect";
 
+const iframeData = new Map();
+
+const setupIframeNavigation = (iframe, targetOrigin, panelId) => {
+  const iframeId = iframe.id;
+  const navigationHistory = [];
+
+  const navigateToHistoryItem = (index) => {
+    const historyItem = navigationHistory[index];
+    if (!historyItem) {
+      console.warn(`[${iframeId}] No history item at index ${index}`);
+      return;
+    }
+
+    console.log(`[${iframeId}] Navigating to: ${historyItem.routeName}`);
+    iframe.src = historyItem.url;
+  };
+
+  const updateBreadcrumb = () => {
+    const breadcrumbElement = document.getElementById(`${panelId}-breadcrumb`);
+    if (!breadcrumbElement) return;
+
+    if (navigationHistory.length <= 1) {
+      breadcrumbElement.innerHTML = '';
+      return;
+    }
+
+    const breadcrumbItems = navigationHistory.slice(-3, -1);
+    const breadcrumbHTML = breadcrumbItems.map((item, idx) => {
+      const historyIndex = navigationHistory.length - 3 + idx;
+      return `<span class="breadcrumb-item" onclick="navigateToHistoryItem('${iframeId}', ${historyIndex})">${item.routeName}</span>`;
+    }).join(' <span class="breadcrumb-separator">></span> ');
+
+    breadcrumbElement.innerHTML = breadcrumbHTML;
+  };
+
+  if (!iframeData.has(iframeId)) {
+    iframeData.set(iframeId, {});
+  }
+  const data = iframeData.get(iframeId);
+  data.navigateToHistoryItem = navigateToHistoryItem;
+
+  const handleNavigationChange = (event) => {
+    if (event.origin !== targetOrigin) {
+      return;
+    }
+
+    if (
+      event.data?.type === "NAVIGATION_CHANGE" &&
+      event.source === iframe.contentWindow
+    ) {
+      const payload = event.data.payload;
+
+      if (payload.routeName) {
+        navigationHistory.push({
+          routeName: payload.routeName,
+          url: payload.url,
+          path: payload.path,
+          fullPath: payload.fullPath
+        });
+
+        if (navigationHistory.length > 10) {
+          navigationHistory.shift();
+        }
+
+        const routeNameElement = document.getElementById(`${panelId}-route`);
+        if (routeNameElement) {
+          routeNameElement.textContent = payload.routeName;
+        }
+
+        updateBreadcrumb();
+      }
+    }
+  };
+
+  window.addEventListener("message", handleNavigationChange);
+};
+
+window.navigateIframeHome = (iframeId) => {
+  const data = iframeData.get(iframeId);
+  if (!data) {
+    console.warn(`No data found for ${iframeId}`);
+    return false;
+  }
+
+  data.iframe.src = data.originalUrl;
+  return true;
+};
+
+window.navigateToHistoryItem = (iframeId, historyIndex) => {
+  const data = iframeData.get(iframeId);
+  if (!data || !data.navigateToHistoryItem) {
+    console.warn(`No navigation function found for ${iframeId}`);
+    return false;
+  }
+
+  data.navigateToHistoryItem(historyIndex);
+  return true;
+};
+
 /**
  * Check if popups are allowed by attempting to open a test popup
  * @returns {boolean} true if popups are allowed, false otherwise
@@ -229,7 +328,7 @@ function postTokensToIframe(iframe, tokens, targetOrigin) {
         } else {
           console.error(
             `Token injection failed for iframe ${iframeId}:`,
-            ackPayload.error
+            ackPayload
           );
           reject(new Error(ackPayload.error || "Token injection failed"));
         }
@@ -337,11 +436,11 @@ window.loadIframes = async function () {
     // Setup onload handler BEFORE setting src to ensure we catch the load event
     iframe.onload = async function () {
       try {
-        // Wait for iframe to signal it's ready to receive tokens
         await waitForIframeReady(iframe, targetOrigin);
 
-        // Post tokens to iframe
         await postTokensToIframe(iframe, tokens, targetOrigin);
+
+        setupIframeNavigation(iframe, targetOrigin, panelId);
       } catch (error) {
         console.error(`Token injection error for ${iframe.id}:`, error);
       }
@@ -350,7 +449,14 @@ window.loadIframes = async function () {
     panelContainer.innerHTML = "";
     panelContainer.appendChild(iframe);
 
-    // Set src AFTER attaching onload handler
+    const existingData = iframeData.get(iframe.id) || {};
+    iframeData.set(iframe.id, {
+      ...existingData,
+      iframe: iframe,
+      originalUrl: iframeUrl,
+      panelId: panelId
+    });
+
     iframe.src = iframeUrl;
   });
 };
