@@ -69,13 +69,16 @@ const setupIframeNavigation = (iframe, targetOrigin, panelId) => {
       return;
     }
 
-    const breadcrumbItems = navigationHistory.slice(-3, -1);
-    const breadcrumbHTML = breadcrumbItems.map((item, idx) => {
-      const historyIndex = navigationHistory.length - 3 + idx;
-      return `<span class="breadcrumb-item" onclick="navigateToHistoryItem('${iframeId}', ${historyIndex})">${item.routeName}</span>`;
-    }).join(' <span class="breadcrumb-separator">></span> ');
+    const currentRoute = navigationHistory[navigationHistory.length - 1];
+    const previousRoute = navigationHistory[navigationHistory.length - 2];
 
-    breadcrumbElement.innerHTML = breadcrumbHTML;
+    if (previousRoute.routeName === currentRoute.routeName) {
+      breadcrumbElement.innerHTML = '';
+      return;
+    }
+
+    const historyIndex = navigationHistory.length - 2;
+    breadcrumbElement.innerHTML = `<span class="breadcrumb-item" onclick="navigateToHistoryItem('${iframeId}', ${historyIndex})">${previousRoute.routeName}</span> <span class="breadcrumb-separator">></span>`;
   };
 
   if (!iframeData.has(iframeId)) {
