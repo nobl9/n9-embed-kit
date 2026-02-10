@@ -6,6 +6,8 @@
     <title>Dashboard - Four Panel View</title>
     <link rel="stylesheet" href="style.css" />
     <script src="https://global.oktacdn.com/okta-auth-js/7.5.1/okta-auth-js.min.js"></script>
+    <script src="../iframe-console-logger.js"></script>
+    <script src="../n9-config.js"></script>
     <script src="../n9-iframe-auth.js" defer></script>
   </head>
   <body class="dashboard">
@@ -23,7 +25,7 @@
       </header>
 
       <div class="container">
-        <div class="grid-container">
+        <div class="panels-container">
           <div class="panel">
             <div class="panel-header">
               <div class="panel-title">
@@ -32,9 +34,18 @@
                 <span class="route-name" id="panel-1-route">Panel 1</span>
               </div>
             </div>
-            <div class="panel-content" id="panel-1">
-              <div class="placeholder">
-                <div class="status-message">Authenticating...</div>
+            <div class="panel-body">
+              <div class="console-panel" id="console-panel-1">
+                <div class="console-header">
+                  <span>Console</span>
+                  <button onclick="IframeConsoleLogger.clear('panel-1')" class="console-clear-btn" title="Clear console">Clear</button>
+                </div>
+                <div class="console-content" id="console-content-panel-1"></div>
+              </div>
+              <div class="panel-content" id="panel-1">
+                <div class="placeholder">
+                  <div class="status-message">Authenticating...</div>
+                </div>
               </div>
             </div>
           </div>
@@ -47,36 +58,19 @@
                 <span class="route-name" id="panel-2-route">Panel 2</span>
               </div>
             </div>
-            <div class="panel-content" id="panel-2">
-              <div class="placeholder">
-                <div class="status-message">Authenticating...</div>
+            <div class="panel-body">
+              <div class="console-panel" id="console-panel-2">
+                <div class="console-header">
+                  <span>Console</span>
+                  <button onclick="IframeConsoleLogger.clear('panel-2')" class="console-clear-btn" title="Clear console">Clear</button>
+                </div>
+                <div class="console-content" id="console-content-panel-2"></div>
               </div>
-            </div>
-          </div>
-
-          <div class="panel">
-            <div class="panel-header">
-              <div class="panel-title">
-                <button onclick="navigateIframeHome('panel-3-iframe')" class="home-btn" title="Home">🏠</button>
-                <span class="breadcrumb" id="panel-3-breadcrumb"></span>
-                <span class="route-name" id="panel-3-route">Panel 3</span>
+              <div class="panel-content" id="panel-2">
+                <div class="placeholder">
+                  <div class="status-message">Authenticating...</div>
+                </div>
               </div>
-            </div>
-            <div class="panel-content" id="panel-3">
-              <div class="placeholder">No content</div>
-            </div>
-          </div>
-
-          <div class="panel">
-            <div class="panel-header">
-              <div class="panel-title">
-                <button onclick="navigateIframeHome('panel-4-iframe')" class="home-btn" title="Home">🏠</button>
-                <span class="breadcrumb" id="panel-4-breadcrumb"></span>
-                <span class="route-name" id="panel-4-route">Panel 4</span>
-              </div>
-            </div>
-            <div class="panel-content" id="panel-4">
-              <div class="placeholder">No content</div>
             </div>
           </div>
         </div>

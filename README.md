@@ -176,6 +176,34 @@ Tokens obtained via redirect or popup oauth flow
 
 ---
 
+### 5. NAVIGATE_TO (Parent → Iframe)
+**Sent by:** Parent page
+**When:** Parent wants to trigger navigation inside the iframe
+
+**Message Structure:**
+```javascript
+{
+  type: "NAVIGATE_TO",
+  payload: {
+    url: "https://app.nobl9.com/services/.../slos?org=nobl9-dev&embedMode=compact",  // Full URL (path extracted automatically)
+    // OR
+    path: "/services/.../slos?org=nobl9-dev&embedMode=compact",  // Relative path
+    replace: false  // Optional, default false - use router.replace instead of router.push
+  }
+}
+```
+
+**Field Descriptions:**
+- `url`: Complete URL to navigate to (path will be extracted automatically)
+- `path`: Relative path to navigate to (alternative to url)
+- `replace`: Optional boolean - when true, uses router.replace instead of router.push
+
+**Note:** At least one of `url` or `path` is required. If `url` is provided, the handler extracts pathname + query + hash from it.
+
+**Purpose:** Enables client-side Vue Router navigation inside the iframe without full page reloads, avoiding auth race conditions that occur with iframe.src changes.
+
+---
+
 ### Complete Message Flow
 
 ```
@@ -203,6 +231,12 @@ Parent Page                       N9 Embedded Iframe
      |<--- NAVIGATION_CHANGE ------------|
      |                                   |
      |-- Tracks navigation history       |
+     |                                   |
+     |                                   |
+     |------- NAVIGATE_TO -------------->|
+     |  (trigger client-side nav)        |
+     |                                   |
+     |                                   |-- Vue Router navigates
 ```
 
 ---
