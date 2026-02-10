@@ -3,45 +3,127 @@
  * Handles iframe loading and token injection to embedded iframes
  */
 
-/**
- * N9 Auth configuration for iframe authentication
- * @type {Object}
- */
-const n9AuthConfig = {
-  issuer: 'https://n9-domain/oauth2/',
-  clientId: 'client-id',
-  redirectUri: window.location.origin + '/sample/dashboard.html',
-  scopes: ['openid', 'profile', 'email'],
-  pkce: true,
-  tokenManager: {
-    storage: 'localStorage',
-    key: 'n9Auth'
+if (!window.N9_CONFIG) {
+  throw new Error('N9_CONFIG is not defined. Load n9-config.js before n9-iframe-auth.js (see n9-config.example.js).');
+}
+
+const n9AuthConfig = window.N9_CONFIG.auth;
+const iframeConfig = window.N9_CONFIG.iframes;
+const targetOrigin = window.N9_CONFIG.targetOrigin;
+const iframeAuthMode = window.N9_CONFIG.authMode || 'redirect';
+
+const iframeData = new Map();
+
+const setupIframeNavigation = (iframe, targetOrigin, panelId) => {
+  const iframeId = iframe.id;
+  const navigationHistory = [];
+
+  const navigateToHistoryItem = (index) => {
+    const historyItem = navigationHistory[index];
+    if (!historyItem) {
+      console.warn(`[${iframeId}] No history item at index ${index}`);
+      return;
+    }
+
+    console.log(`[${iframeId}] Navigating to: ${historyItem.routeName}`);
+
+    const navigateMessage = {
+      type: "NAVIGATE_TO",
+      payload: {
+        url: historyItem.url,
+        replace: false
+      }
+    };
+
+    IframeConsoleLogger.log(panelId, 'outgoing', 'NAVIGATE_TO', navigateMessage.payload);
+    iframe.contentWindow.postMessage(navigateMessage, targetOrigin);
+  };
+
+  const updateBreadcrumb = () => {
+    const breadcrumbElement = document.getElementById(`${panelId}-breadcrumb`);
+    if (!breadcrumbElement) return;
+
+    if (navigationHistory.length <= 1) {
+      breadcrumbElement.innerHTML = '';
+      return;
+    }
+
+    const currentRoute = navigationHistory[navigationHistory.length - 1];
+    const previousRoute = navigationHistory[navigationHistory.length - 2];
+
+    if (previousRoute.routeName === currentRoute.routeName) {
+      breadcrumbElement.innerHTML = '';
+      return;
+    }
+
+    const historyIndex = navigationHistory.length - 2;
+    breadcrumbElement.innerHTML = `<span class="breadcrumb-item" onclick="navigateToHistoryItem('${iframeId}', ${historyIndex})">${previousRoute.routeName}</span> <span class="breadcrumb-separator">></span>`;
+  };
+
+  if (!iframeData.has(iframeId)) {
+    iframeData.set(iframeId, {});
   }
+  const data = iframeData.get(iframeId);
+  data.navigateToHistoryItem = navigateToHistoryItem;
+
+  const handleNavigationChange = (event) => {
+    if (event.origin !== targetOrigin) {
+      return;
+    }
+
+    if (
+      event.data?.type === "NAVIGATION_CHANGE" &&
+      event.source === iframe.contentWindow
+    ) {
+      const payload = event.data.payload;
+      IframeConsoleLogger.log(panelId, 'incoming', 'NAVIGATION_CHANGE', payload);
+
+      if (payload.routeName) {
+        navigationHistory.push({
+          routeName: payload.routeName,
+          url: payload.url,
+          path: payload.path,
+          fullPath: payload.fullPath
+        });
+
+        if (navigationHistory.length > 10) {
+          navigationHistory.shift();
+        }
+
+        const routeNameElement = document.getElementById(`${panelId}-route`);
+        if (routeNameElement) {
+          routeNameElement.textContent = payload.routeName;
+        }
+
+        updateBreadcrumb();
+      }
+    }
+  };
+
+  window.addEventListener("message", handleNavigationChange);
 };
 
-/**
- * Iframe configuration map: panel container ID -> iframe URL
- * All iframes configured here will receive token injection
- * @type {Object.<string, string>}
- */
-const iframeConfig = {
-  'panel-1': 'https://example.com/reports/details/report-1?embedMode=minimal&waitExternalAuth=true',
-  'panel-2': 'https://example.com/reports/details/report-2?embedMode=minimal&waitExternalAuth=true',
-  // 'panel-3': null,
-  // 'panel-4': null,
+window.navigateIframeHome = (iframeId) => {
+  const data = iframeData.get(iframeId);
+  if (!data) {
+    console.warn(`No data found for ${iframeId}`);
+    return false;
+  }
+
+  data.iframe.src = data.originalUrl;
+  return true;
 };
 
-/**
- * Target origin for postMessage (must match the iframe domain for security)
- * @type {string}
- */
-const targetOrigin = 'https://n9-domain';
+window.navigateToHistoryItem = (iframeId, historyIndex) => {
+  const data = iframeData.get(iframeId);
+  if (!data || !data.navigateToHistoryItem) {
+    console.warn(`No navigation function found for ${iframeId}`);
+    return false;
+  }
 
-/**
- * Auth acquisition mode: 'redirect' or 'popup'
- * @type {string}
- */
-const iframeAuthMode = "redirect";
+  data.navigateToHistoryItem(historyIndex);
+  return true;
+};
 
 /**
  * Check if popups are allowed by attempting to open a test popup
@@ -158,11 +240,16 @@ function waitForIframeReady(iframe, targetOrigin, timeoutMs = 5000) {
         return;
       }
 
-      // Check that the message comes from THIS specific iframe
       if (
         event.data?.type === "IFRAME_READY" &&
         event.source === iframe.contentWindow
       ) {
+        const panelId = Array.from(iframeData.entries())
+          .find(([_, data]) => data.iframe === iframe)?.[1]?.panelId;
+        if (panelId) {
+          IframeConsoleLogger.log(panelId, 'incoming', 'IFRAME_READY', event.data.payload || {});
+        }
+
         readyReceived = true;
         clearTimeout(timeoutId);
         window.removeEventListener("message", handleReadyMessage);
@@ -214,11 +301,16 @@ function postTokensToIframe(iframe, tokens, targetOrigin) {
         return;
       }
 
-      // Check that the ACK comes from THIS specific iframe
       if (
         event.data?.type === "INJECT_TOKENS_ACK" &&
         event.source === iframe.contentWindow
       ) {
+        const panelId = Array.from(iframeData.entries())
+          .find(([_, data]) => data.iframe === iframe)?.[1]?.panelId;
+        if (panelId) {
+          IframeConsoleLogger.log(panelId, 'incoming', 'INJECT_TOKENS_ACK', event.data.payload);
+        }
+
         ackReceived = true;
         clearTimeout(timeoutId);
         window.removeEventListener("message", handleAcknowledgment);
@@ -229,7 +321,7 @@ function postTokensToIframe(iframe, tokens, targetOrigin) {
         } else {
           console.error(
             `Token injection failed for iframe ${iframeId}:`,
-            ackPayload.error
+            ackPayload
           );
           reject(new Error(ackPayload.error || "Token injection failed"));
         }
@@ -245,6 +337,12 @@ function postTokensToIframe(iframe, tokens, targetOrigin) {
         resolve();
       }
     }, ACK_TIMEOUT_MS);
+
+    const panelId = Array.from(iframeData.entries())
+      .find(([_, data]) => data.iframe === iframe)?.[1]?.panelId;
+    if (panelId) {
+      IframeConsoleLogger.log(panelId, 'outgoing', 'INJECT_TOKENS', message.payload);
+    }
 
     window.addEventListener("message", handleAcknowledgment);
     iframe.contentWindow.postMessage(message, targetOrigin);
@@ -337,11 +435,11 @@ window.loadIframes = async function () {
     // Setup onload handler BEFORE setting src to ensure we catch the load event
     iframe.onload = async function () {
       try {
-        // Wait for iframe to signal it's ready to receive tokens
         await waitForIframeReady(iframe, targetOrigin);
 
-        // Post tokens to iframe
         await postTokensToIframe(iframe, tokens, targetOrigin);
+
+        setupIframeNavigation(iframe, targetOrigin, panelId);
       } catch (error) {
         console.error(`Token injection error for ${iframe.id}:`, error);
       }
@@ -350,7 +448,14 @@ window.loadIframes = async function () {
     panelContainer.innerHTML = "";
     panelContainer.appendChild(iframe);
 
-    // Set src AFTER attaching onload handler
+    const existingData = iframeData.get(iframe.id) || {};
+    iframeData.set(iframe.id, {
+      ...existingData,
+      iframe: iframe,
+      originalUrl: iframeUrl,
+      panelId: panelId
+    });
+
     iframe.src = iframeUrl;
   });
 };
