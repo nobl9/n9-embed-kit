@@ -20,43 +20,49 @@ The sample assumes you already have an active authenticated session with the Ide
 
 ## Configuration
 
-Before using the script, you must configure the following:
+Configuration is stored in a separate `n9-config.js` file. Copy the example file and fill in your values:
 
-- `n9AuthConfig`: Set N9 auth server issuer and clientId.
-- `targetOrigin`: Set this to match the domain of your embedded iframes for secure postMessage communication.
+```bash
+cp n9-config.example.js n9-config.js
+```
 
-Example:
+Then edit `n9-config.js` with your settings:
+
 ```javascript
-const n9AuthConfig = {
+window.N9_CONFIG = {
+  auth: {
     issuer: 'https://your-n9-auth-domain/oauth2/default',
     clientId: 'your-client-id',
     redirectUri: window.location.origin + '/sample/dashboard.html',
     scopes: ['openid', 'profile', 'email'],
     pkce: true,
     tokenManager: {
-        storage: 'localStorage',
-        key: 'n9Auth'
+      storage: 'localStorage',
+      key: 'n9Auth'
     }
-};
-
-const targetOrigin = 'https://app.nobl9.com';
-```
-
-### iFrame sources
-Set the iframe sources to point to your Nobl9 reports or dashboards.
-- `waitExternalAuth=true` query parameter is required to force N9 app to wait for tokens via postMessage before rendering (see Token Message Protocol Specification below). Note: `wait=true` is deprecated.
-- `embedMode=minimal` query parameter is optional to hide the Nobl9 header and sidebar in the embedded view.
-```javascript
-const iframeConfig = {
+  },
+  iframes: {
     'panel-1': 'https://example.com/reports/details/report-1?embedMode=minimal&waitExternalAuth=true',
-    'panel-2': 'https://example.com/reports/details/report-2?embedMode=minimal&waitExternalAuth=true',
-    // 'panel-3': null,
-    // 'panel-4': null,
+    // 'panel-2': 'https://example.com/reports/details/report-2?embedMode=minimal&waitExternalAuth=true',
+  },
+  targetOrigin: 'https://app.nobl9.com',
+  authMode: 'redirect',
 };
 ```
+
+### Configuration fields
+
+- `auth`: Okta auth server settings (issuer, clientId, redirectUri, scopes, etc.)
+- `targetOrigin`: Must match the domain of your embedded iframes for secure postMessage communication.
+- `authMode`: Authentication mode — `'redirect'` (default) or `'popup'` (see [Two Authentication Methods](#two-authentication-methods)).
+- `iframes`: Map of panel IDs to iframe URLs. Set a value to `null` to disable a panel.
+
+### iFrame URL query parameters
+- `waitExternalAuth=true` — required to force N9 app to wait for tokens via postMessage before rendering (see Token Message Protocol Specification below). Note: `wait=true` is deprecated.
+- `embedMode=minimal` — optional, hides the Nobl9 header and sidebar in the embedded view.
 
 ## Two Authentication Methods
-The JavaScript (`n9-iframe-auth.js`) supports two acquisition modes controlled by `iframeAuthMode`:
+The JavaScript (`n9-iframe-auth.js`) supports two acquisition modes controlled by the `authMode` setting in `n9-config.js`:
 
 ### 1. Redirect Mode (default)
 - If tokens are not already present in the URL, the page triggers an OAuth redirect.
@@ -71,7 +77,7 @@ The JavaScript (`n9-iframe-auth.js`) supports two acquisition modes controlled b
 - Fails fast with a clear alert if popups are blocked.
 
 ### Choosing a Mode
-Set `const iframeAuthMode = 'redirect'` (default) or `'popup'` inside `n9-iframe-auth.js`.
+Set `authMode: 'redirect'` (default) or `'popup'` in your `n9-config.js`.
 Use redirect when you want maximal reliability and simplicity; use popup when uninterrupted SPA flow is preferred and you can guarantee popups are allowed.
 
 ## Token Message Protocol Specification
@@ -260,6 +266,8 @@ http://localhost:8080/sample/dashboard.html
 |-------------------------|---------|
 | `sample/dashboard.html` | Sample page containing panel containers where iframes will be injected. |
 | `sample/style.css`      | Minimal styling for layout (optional). |
+| `n9-config.example.js`  | Example configuration file — copy to `n9-config.js` and fill in your values. |
+| `n9-config.js`          | Your local configuration (gitignored). Loaded before `n9-iframe-auth.js`. |
 | `n9-iframe-auth.js`     | Handles token acquisition (redirect/popup) and posts tokens to iframes. |
 | `README.md`             | This documentation. |
 
