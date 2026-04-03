@@ -79,6 +79,11 @@ const setupIframeNavigation = (iframe, targetOrigin, panelId) => {
       IframeConsoleLogger.log(panelId, 'incoming', 'NAVIGATION_CHANGE', payload);
 
       if (payload.routeName) {
+        const lastEntry = navigationHistory[navigationHistory.length - 1];
+        if (lastEntry && lastEntry.routeName === payload.routeName) {
+          return;
+        }
+
         navigationHistory.push({
           routeName: payload.routeName,
           url: payload.url,
